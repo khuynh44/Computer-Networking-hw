@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
     return 0;
 	}
 		
-	server.sin_addr.s_addr = inet_addr(argv[3]);//address
+	server.sin_addr.s_addr = inet_addr("127.0.0.1");//address
 	server.sin_family = AF_INET;
 	server.sin_port = htons(port);
 
@@ -37,36 +37,44 @@ int main(int argc, char *argv[]) {
     close(socket_desc);
 		return 1;
 	}
-  char * concat = strcat(passcode, username);
-	if( send(socket_desc , concat , strlen(concat) , 0) < 0)
+	if(send(socket_desc , passcode , strlen(passcode) , 0) < 0)//send passcode
 	{
 		puts("Send failed");
     close(socket_desc);
 		return 1;
 	}
-  char reply[2000];
-  bzero(reply, 1999);
-  if(recv(socket_desc, reply , 2000 , 0) < 0)
+  char reply[200];
+  bzero(reply, 199);
+  if(recv(socket_desc, reply , 200 , 0) < 0)
 	{
 		puts("recv failed");
     close(socket_desc);
     return 1;
 	}
-  if (strncmp("incorrect passcode", reply, 18) == 0) {
-    puts("passcode incorrect");
+  if (strcmp("incorrect passcode", reply) == 0) {
+    puts(reply);
     close(socket_desc);
     return 1;
   }
+  if(send(socket_desc , username , strlen(username) , 0) < 0)//send username
+	{
+		puts("Send failed");
+    close(socket_desc);
+		return 1;
+	}
   pthread_t recv_id;
   pthread_create(&recv_id, NULL, &recv_thread, &socket_desc);
 	printf("Connected to %s on port %d", argv[3], port);
   while(1) {
     char message[200];
     scanf("%s", message);
-    if (strncmp(":Exit", message, 5)) {
+    if (strncmp(":Exit", message, 5) == 0) {
       break;
     }
-    send(socket_desc , message , strlen(message) , 0);
+    if (send(socket_desc, message , strlen(message) , 0) <= 0) {
+      puts("server is down");
+      break;
+    }
   }
   pthread_cancel(recv_id);
   close(socket_desc);
@@ -75,10 +83,12 @@ int main(int argc, char *argv[]) {
 
 void *recv_thread(void*socket_desc) {
   int socket = *(int*)socket_desc;
-  char reply[2000];
-  while (recv(socket, reply , 2000 , 0) > 0)
+  char reply[200];
+  printf("out of while");
+  while (recv(socket, reply , 200 , 0) > 0)
 	{
-		puts(reply);
+    printf("made it");
+    printf("%s", reply);
 	}
   return NULL;
 }
