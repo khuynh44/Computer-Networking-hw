@@ -5,7 +5,10 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include<iostream>
 #include "chatclient.h"
+#define MAX 256
+using namespace std;
 /**
  * Author:
  * GTID:
@@ -16,7 +19,9 @@ int main(int argc, char *argv[]) {
 	int socket_desc;
 	struct sockaddr_in server;
   int port = atoi(argv[5]);
-	char *username = argv[7];
+	char username[MAX];
+  char *hostname = argv[3];
+  strcpy(username, argv[7]);
   char *passcode = argv[9];
 	//Create socket
 	socket_desc = socket(AF_INET , SOCK_STREAM , 0);
@@ -26,7 +31,7 @@ int main(int argc, char *argv[]) {
     return 0;
 	}
 		
-	server.sin_addr.s_addr = inet_addr("127.0.0.1");//address
+	server.sin_addr.s_addr = inet_addr(hostname);//address
 	server.sin_family = AF_INET;
 	server.sin_port = htons(port);
 
@@ -43,20 +48,21 @@ int main(int argc, char *argv[]) {
     close(socket_desc);
 		return 1;
 	}
-  char reply[200];
-  bzero(reply, 199);
+  char reply[MAX];
+  bzero(reply, MAX);
   if(recv(socket_desc, reply , 200 , 0) < 0)
 	{
 		puts("recv failed");
     close(socket_desc);
     return 1;
 	}
-  if (strcmp("incorrect passcode", reply) == 0) {
+  if (strcmp("Incorrect passcode", reply) == 0) {
     puts(reply);
     close(socket_desc);
     return 1;
   }
-  if(send(socket_desc , username , strlen(username) , 0) < 0)//send username
+  //printf("%s %d", username, strlen(username));
+  if(write(socket_desc , username , strlen(username)) < 0)//send username
 	{
 		puts("Send failed");
     close(socket_desc);
@@ -64,11 +70,24 @@ int main(int argc, char *argv[]) {
 	}
   pthread_t recv_id;
   pthread_create(&recv_id, NULL, &recv_thread, &socket_desc);
-	printf("Connected to %s on port %d", argv[3], port);
+	printf("Connected to %s on port %d\n", argv[3], port);
   while(1) {
-    char message[200];
-    scanf("%s", message);
-    if (strncmp(":Exit", message, 5) == 0) {
+    char message[MAX];
+    bzero(message, MAX);
+    //sleep(1);
+    fgets(message, MAX, stdin);
+    if (message[0] == '\n') {
+      continue;
+    }
+    //trim(message, MAX);
+    
+    //scanf("%s", message);
+    //cin >> message;
+    if (strcmp(":)\n", message) == 0) {
+      strcpy(message, "[feeling happy]\n");
+    } else if (strcmp(":(\n", message) == 0) {
+      strcpy(message, "[feeling sad]\n");
+    } else if (strcmp(":Exit\n", message) == 0) {
       break;
     }
     if (send(socket_desc, message , strlen(message) , 0) <= 0) {
@@ -76,19 +95,32 @@ int main(int argc, char *argv[]) {
       break;
     }
   }
-  pthread_cancel(recv_id);
   close(socket_desc);
 	return 0;
-}
+  }
+
 
 void *recv_thread(void*socket_desc) {
   int socket = *(int*)socket_desc;
-  char reply[200];
-  printf("out of while");
-  while (recv(socket, reply , 200 , 0) > 0)
+  char reply[MAX];
+  //printf("out of while");
+  while (recv(socket, reply , MAX , 0) > 0)
 	{
-    printf("made it");
+    //printf("made it");
+    //fflush(stdout);
     printf("%s", reply);
+    //fflush(stdout);
+    bzero(reply, MAX);
 	}
+  pthread_cancel(pthread_self());
   return NULL;
+}
+
+void trim(char* arr, int length) {
+  for (int i = 0; i < length; i++) { // trim \n
+    if (arr[i] == '\n') {
+      arr[i] = '\0';
+      break;
+    }
+  }
 }

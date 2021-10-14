@@ -8,7 +8,7 @@
 typedef struct {
     int used;
     int socket;
-    char *username;
+    char username[256];
 } Client;
 
 void *clientThread(void *client);

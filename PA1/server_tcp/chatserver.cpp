@@ -37,9 +37,11 @@ int main(int argc, char *argv[]) {
   server.sin_port = htons(port);
     
   //Bind
-  if( bind(socket_desc,(struct sockaddr *)&server , sizeof(server)) < 0)
+  if(bind(socket_desc,(struct sockaddr *)&server , sizeof(server)) < 0)
   {
     puts("bind failed");
+    close(socket_desc);
+    return 0;
   }
   listen(socket_desc , 10);
 
@@ -47,11 +49,10 @@ int main(int argc, char *argv[]) {
   printf("Server started on port %d. Accepting connections\n", port);
   while( (new_socket = accept(socket_desc, (struct sockaddr *)&client, (socklen_t*)&c)) )
 	{
-		printf("Server accepted");
+		//printf("Server accepted");
 		//Reply to the client
 		char message[256];
-		
-		pthread_t sniffer_thread;
+
     if (new_socket < 0) {
 		  puts("accept failed");
 		  return 1;
@@ -62,57 +63,74 @@ int main(int argc, char *argv[]) {
       return 1;
     }
     if (strcmp(passcode, message) != 0) {
-      char *error = "incorrect passcode";
-      write(new_socket, error , strlen(error));
+      write(new_socket, "Incorrect passcode", 18);
       close(new_socket);
       continue;
     } else {
-      char *corr = "Correct";
-      write(new_socket, corr , strlen(corr));
+      write(new_socket, "Correct", 7);
     }
 
     char username[256];
-    if ((read_size = recv(new_socket , username, 255 , 0)) < 0) {
+    bzero(username, 256);
+    if ((read_size = recv(new_socket , username, 256 , 0)) < 0) {
       puts("error with recieve");
       return 1;
     }
-    Client *client;
+    Client *clien;
+    int flag = 0;
+    printf("%s joined the chatroom\n", username);
     for (int i = 0; i < 10; i++) {
-      if (clients[i].used == 0) {
-        client = (clients + i);
+      if (clients[i].used == 0 && flag == 0) {
+        flag = 1;
+        clien = (clients + i);
         clients[i].used = 1;
-        clients[i].username = username;
+        strcpy(clients[i].username, username);
         clients[i].socket = new_socket;
-        break;
+      } else if (clients[i].used == 1) {
+        char *join = strcat(username," joined the chatroom\n");
+        write(clients[i].socket , join, strlen(join));
       }
     }
-    printf("%s joined the chatroom\n", username);
+    //printf("%s joined the chatroom\n", username);
     pthread_t client_id;
-    pthread_create(&client_id, NULL, &clientThread, client);
-		// if( pthread_create( &sniffer_thread , NULL ,  connection_handler , (void*) new_sock) < 0)
-		// {
-		// 	perror("could not create thread");
-		// 	return 1;
-		// }
+    pthread_create(&client_id, NULL, &clientThread, (void*)clien);
 		
 		//Now join the thread , so that we dont terminate before the thread
 		//pthread_join( sniffer_thread , NULL);
-		puts("Handler assigned");
+		//puts("Handler assigned");
 	}
+  close(socket_desc);
 	
 }
 void *clientThread(void *client) {
-  Client * client1 = (Client *)client;
+  Client *client1 = (Client *)client;
   int read_size;
   char message[256];
   while ((read_size = recv(client1->socket , message , 256 , 0) > 0)) {
+    char p[520];
+    bzero(p, 520);
+    sprintf(p, "%s: %s", client1->username, message);
     for (int i = 0; i < 10; i++) {
-      if (clients[i].used != 0 && clients[i].socket != client1->socket) {
-        write(client1->socket , message , strlen(message));
+      if (clients[i].used != 0 && (clients + i) != client1) {
+        write(clients[i].socket , p, strlen(p));
       }
     }
-    puts(message);
+    printf("%s", p);
+    bzero(message, 256);
+    //fflush(stdout);
   }
-
+  client1->used = 0;
+  char p[300];
+  bzero(p, 300); 
+  sprintf(p, "%s left the chatroom\n", client1->username);
+  printf("%s", p);
+  for (int i = 0; i < 10; i++) {
+    if (clients[i].used != 0) {
+      write(clients[i].socket , p, strlen(p));
+    }
+  }
+  close(client1->socket);
+  pthread_cancel(pthread_self());
+  return NULL;
 }
 
