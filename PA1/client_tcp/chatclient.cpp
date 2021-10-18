@@ -6,9 +6,10 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include<iostream>
+#include <time.h>
+#include <stdint.h>
 #include "chatclient.h"
 #define MAX 256
-using namespace std;
 /**
  * Author:
  * GTID:
@@ -83,12 +84,23 @@ int main(int argc, char *argv[]) {
     
     //scanf("%s", message);
     //cin >> message;
+    time_t result = time(NULL);
+    //char *time = ctime(&result);
     if (strcmp(":)\n", message) == 0) {
       strcpy(message, "[feeling happy]\n");
     } else if (strcmp(":(\n", message) == 0) {
       strcpy(message, "[feeling sad]\n");
     } else if (strcmp(":Exit\n", message) == 0) {
       break;
+    } else if (strcmp(":mytime\n", message) == 0) {
+      bzero(message, MAX);
+      strcpy(message, ctime(&result));
+      //sprintf(message, "%s", time);
+    } else if (strcmp(":+1hr\n", message) == 0) {
+      struct tm* local = localtime(&result);
+      local->tm_hour++;
+      time_t time = mktime(local);
+      strcpy(message, ctime(&time));
     }
     if (send(socket_desc, message , strlen(message) , 0) <= 0) {
       puts("server is down");
