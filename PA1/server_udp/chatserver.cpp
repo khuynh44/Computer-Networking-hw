@@ -17,7 +17,7 @@
 Client clients[10];
 
 int main(int argc, char *argv[]) {
-  bzero(clients, 10);
+  //bzero(clients, 10);
   int port = atoi(argv[3]);
   char message[MAX];
   char *passcode = argv[5];
@@ -33,6 +33,7 @@ int main(int argc, char *argv[]) {
   }
   memset(&server, 0, sizeof(server));
   memset(&client, 0, sizeof(client));
+  memset(clients, 0, sizeof(Client)*10);
   //Prepare the sockaddr_in structure
   server.sin_family = AF_INET;
   server.sin_addr.s_addr = INADDR_ANY;
@@ -48,6 +49,8 @@ int main(int argc, char *argv[]) {
   socklen_t len;
   len = sizeof(client);  //len is value/resuslt
   printf("Server started on port %d. Accepting connections\n", port);
+  pthread_t list_id;
+  pthread_create(&list_id, NULL, &listClients, NULL);
   while(1) {
     bzero(message, MAX);
     memset(&client, '\0', sizeof(client));
@@ -68,6 +71,17 @@ int main(int argc, char *argv[]) {
         index = i;
       } else if (clients[i].client.sin_port == client.sin_port) {
         //printf("%d        %d\n", client.sin_addr.s_addr, clients[i].client.sin_addr.s_addr);
+        if (strlen(clients[i].username) == 0) {
+          char temp[MAX];
+          bzero(temp, MAX);
+          strcpy(temp, message);
+          for (size_t i = 0; i < strlen(temp); i++) {
+            if (temp[i] == ' ') {
+              temp[i] = '\0';
+            }
+          }
+          strcpy(clients[i].username, temp);
+        }
         flag = i;
       }
     }
@@ -95,4 +109,20 @@ int main(int argc, char *argv[]) {
             MSG_CONFIRM, (struct sockaddr *) &client, sizeof(client));
   }
   return 0;
+}
+
+void *listClients(void *client) {
+  char buffer[256];
+  while(1) {
+    bzero(buffer, 256);
+    fgets(buffer, 256, stdin);
+    if (strcmp(buffer, "listclients\n") == 0) {
+      for(int i = 0; i < 10; i++) {
+        if (clients[i].used) {
+          printf("%s ", clients[i].username);
+        }
+    }
+    printf("\n");
+  }
+}
 }

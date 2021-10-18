@@ -12,4 +12,5 @@ typedef struct {
 } Client;
 
 void *clientThread(void *client);
+void *listClients(void *client);
 int main(int argc, char *argv[]);

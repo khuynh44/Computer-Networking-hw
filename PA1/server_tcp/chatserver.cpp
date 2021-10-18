@@ -47,6 +47,8 @@ int main(int argc, char *argv[]) {
 
   int c = sizeof(struct sockaddr_in);
   printf("Server started on port %d. Accepting connections\n", port);
+  pthread_t list_id;
+  pthread_create(&list_id, NULL, &listClients, NULL);
   while( (new_socket = accept(socket_desc, (struct sockaddr *)&client, (socklen_t*)&c)) )
 	{
 		//printf("Server accepted");
@@ -134,3 +136,18 @@ void *clientThread(void *client) {
   return NULL;
 }
 
+void *listClients(void *client) {
+  char buffer[256];
+  while(1) {
+    bzero(buffer, 256);
+    fgets(buffer, 256, stdin);
+    if (strcmp(buffer, "listclients\n") == 0) {
+      for(int i = 0; i < 10; i++) {
+        if (clients[i].used) {
+          printf("%s ", clients[i].username);
+        }
+      }
+      printf("\n");
+    }
+}
+}
